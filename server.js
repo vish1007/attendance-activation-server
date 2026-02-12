@@ -1,81 +1,70 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const cors = require("cors");
-const { v4: uuidv4 } = require("uuid");
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
-let users = [];
+/* ================= MONGODB CONNECT ================= */
+
+mongoose.connect(process.env.MONGO_URI)
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.error("Mongo Error:", err));
+
+/* ================= USER MODEL ================= */
+
+const userSchema = new mongoose.Schema({
+  email: String,
+  deviceId: String,
+  status: { type: String, default: "PENDING" },
+  lastActive: Date
+});
+
+const User = mongoose.model("User", userSchema);
 
 /* ================= REGISTER ================= */
-app.post("/register", (req, res) => {
+
+app.post("/register", async (req, res) => {
   const { email, deviceId } = req.body;
 
-  let user = users.find(
-    u => u.email === email && u.deviceId === deviceId
-  );
+  let user = await User.findOne({ deviceId });
 
-  if (user) {
-    return res.json({ status: user.status });
+  if (!user) {
+    user = await User.create({ email, deviceId });
   }
 
-  const newUser = {
-    id: uuidv4(),
-    email,
-    deviceId,
-    status: "PENDING",
-    createdAt: new Date()
-  };
-
-  users.push(newUser);
-
-  res.json({ status: "PENDING" });
+  res.json({ status: user.status });
 });
 
 /* ================= CHECK ================= */
-app.post("/check", (req, res) => {
-  const { email, deviceId } = req.body;
 
-  const user = users.find(
-    u => u.email === email && u.deviceId === deviceId
-  );
+app.post("/check", async (req, res) => {
+  const { deviceId } = req.body;
+
+  const user = await User.findOne({ deviceId });
 
   if (!user) return res.json({ status: "NOT_FOUND" });
 
   res.json({ status: user.status });
 });
 
-/* ================= ADMIN PAGE ================= */
-app.get("/admin", (req, res) => {
-  let html = `
-    <h2>Activation Requests</h2>
-    <style>
-      body { font-family: Arial; padding: 20px; }
-      .card { border:1px solid #ccc; padding:15px; margin-bottom:15px; border-radius:8px; }
-      .approved { color:green; font-weight:bold; }
-      .pending { color:orange; font-weight:bold; }
-      button { padding:6px 12px; cursor:pointer; }
-    </style>
-  `;
+/* ================= ADMIN DASHBOARD ================= */
 
-  users.forEach(user => {
+app.get("/admin", async (req, res) => {
+  const users = await User.find();
+
+  let html = "<h2>Activation Admin</h2>";
+
+  users.forEach(u => {
     html += `
-      <div class="card">
-        <p><b>Email:</b> ${user.email}</p>
-        <p><b>Device ID:</b> ${user.deviceId}</p>
-        <p>Status: 
-          <span class="${user.status === "APPROVED" ? "approved" : "pending"}">
-            ${user.status}
-          </span>
-        </p>
-        ${
-          user.status === "PENDING"
-            ? `<form method="POST" action="/approve/${user.id}">
-                 <button type="submit">Approve</button>
-               </form>`
-            : ""
-        }
+      <div style="margin-bottom:15px;">
+        <b>${u.email}</b><br/>
+        ${u.deviceId}<br/>
+        Status: ${u.status}<br/>
+        <a href="/approve/${u.deviceId}">Approve</a> |
+        <a href="/block/${u.deviceId}">Block</a>
+        <hr/>
       </div>
     `;
   });
@@ -84,24 +73,40 @@ app.get("/admin", (req, res) => {
 });
 
 /* ================= APPROVE ================= */
-app.post("/approve/:id", (req, res) => {
-  const user = users.find(u => u.id === req.params.id);
 
-  if (!user) return res.send("User not found");
-
-  user.status = "APPROVED";
-
+app.get("/approve/:deviceId", async (req, res) => {
+  await User.updateOne(
+    { deviceId: req.params.deviceId },
+    { status: "APPROVED" }
+  );
   res.redirect("/admin");
 });
 
-/* ================= DEBUG (optional) ================= */
-app.get("/all", (req, res) => {
-  res.json(users);
+/* ================= BLOCK ================= */
+
+app.get("/block/:deviceId", async (req, res) => {
+  await User.updateOne(
+    { deviceId: req.params.deviceId },
+    { status: "BLOCKED" }
+  );
+  res.redirect("/admin");
 });
+
+/* ================= HEARTBEAT ================= */
+
+app.post("/heartbeat", async (req, res) => {
+  const { deviceId } = req.body;
+
+  await User.updateOne(
+    { deviceId },
+    { lastActive: new Date() }
+  );
+
+  res.json({ success: true });
+});
+
+/* ================= START SERVER ================= */
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");
-});
-app.get("/all", (req, res) => {
-  res.json(users);
 });

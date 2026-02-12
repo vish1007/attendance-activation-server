@@ -66,3 +66,6 @@ app.get("/approve/:id", (req, res) => {
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
+app.get("/all", (req, res) => {
+  res.json(users);
+});

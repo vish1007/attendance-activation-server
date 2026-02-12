@@ -6,39 +6,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/*
-Temporary memory database
-(For real production use MongoDB)
-*/
 let users = [];
 
-/*
-REGISTER DEVICE
-*/
+/* ================= REGISTER ================= */
 app.post("/register", (req, res) => {
   const { email, deviceId } = req.body;
 
-  const exists = users.find(
+  let user = users.find(
     u => u.email === email && u.deviceId === deviceId
   );
 
-  if (exists) {
-    return res.json({ status: exists.status });
+  if (user) {
+    return res.json({ status: user.status });
   }
 
-  users.push({
+  const newUser = {
     id: uuidv4(),
     email,
     deviceId,
-    status: "PENDING"
-  });
+    status: "PENDING",
+    createdAt: new Date()
+  };
+
+  users.push(newUser);
 
   res.json({ status: "PENDING" });
 });
 
-/*
-CHECK STATUS
-*/
+/* ================= CHECK ================= */
 app.post("/check", (req, res) => {
   const { email, deviceId } = req.body;
 
@@ -51,16 +46,57 @@ app.post("/check", (req, res) => {
   res.json({ status: user.status });
 });
 
-/*
-MANUAL APPROVAL ROUTE
-(You open in browser to approve)
-*/
-app.get("/approve/:id", (req, res) => {
+/* ================= ADMIN PAGE ================= */
+app.get("/admin", (req, res) => {
+  let html = `
+    <h2>Activation Requests</h2>
+    <style>
+      body { font-family: Arial; padding: 20px; }
+      .card { border:1px solid #ccc; padding:15px; margin-bottom:15px; border-radius:8px; }
+      .approved { color:green; font-weight:bold; }
+      .pending { color:orange; font-weight:bold; }
+      button { padding:6px 12px; cursor:pointer; }
+    </style>
+  `;
+
+  users.forEach(user => {
+    html += `
+      <div class="card">
+        <p><b>Email:</b> ${user.email}</p>
+        <p><b>Device ID:</b> ${user.deviceId}</p>
+        <p>Status: 
+          <span class="${user.status === "APPROVED" ? "approved" : "pending"}">
+            ${user.status}
+          </span>
+        </p>
+        ${
+          user.status === "PENDING"
+            ? `<form method="POST" action="/approve/${user.id}">
+                 <button type="submit">Approve</button>
+               </form>`
+            : ""
+        }
+      </div>
+    `;
+  });
+
+  res.send(html);
+});
+
+/* ================= APPROVE ================= */
+app.post("/approve/:id", (req, res) => {
   const user = users.find(u => u.id === req.params.id);
+
   if (!user) return res.send("User not found");
 
   user.status = "APPROVED";
-  res.send("User Approved");
+
+  res.redirect("/admin");
+});
+
+/* ================= DEBUG (optional) ================= */
+app.get("/all", (req, res) => {
+  res.json(users);
 });
 
 app.listen(3000, () => {

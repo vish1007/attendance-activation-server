@@ -176,13 +176,42 @@ app.get("/approve/:deviceId", async (req, res) => {
   if (!req.session.admin)
     return res.redirect("/admin-login");
 
-  await User.updateOne(
-    { deviceId: req.params.deviceId },
-    { status: "APPROVED" }
-  );
+  const user = await User.findOne({ deviceId: req.params.deviceId });
+
+  if (!user) return res.send("User not found");
+
+  user.status = "APPROVED";
+  await user.save();
+
+  // Send approval email
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Your Activation is Approved",
+      html: `
+        <h3>Activation Approved</h3>
+        <p>Hello,</p>
+        <p>Your device has been successfully approved.</p>
+        <p>You can now use the Attendance Application.</p>
+      `
+    });
+
+  } catch (err) {
+    console.error("Approval email failed:", err);
+  }
 
   res.redirect("/admin");
 });
+
 
 /* ================= BLOCK ================= */
 
@@ -191,13 +220,42 @@ app.get("/block/:deviceId", async (req, res) => {
   if (!req.session.admin)
     return res.redirect("/admin-login");
 
-  await User.updateOne(
-    { deviceId: req.params.deviceId },
-    { status: "BLOCKED" }
-  );
+  const user = await User.findOne({ deviceId: req.params.deviceId });
+
+  if (!user) return res.send("User not found");
+
+  user.status = "BLOCKED";
+  await user.save();
+
+  // Send block email
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Your Access Has Been Blocked",
+      html: `
+        <h3>Access Blocked</h3>
+        <p>Hello,</p>
+        <p>Your access to the Attendance Application has been blocked.</p>
+        <p>Please contact the administrator for support.</p>
+      `
+    });
+
+  } catch (err) {
+    console.error("Block email failed:", err);
+  }
 
   res.redirect("/admin");
 });
+
 
 /* ================= HEARTBEAT ================= */
 

@@ -212,7 +212,7 @@ app.get("/block/:deviceId", async (req, res) => {
   await user.save();
 
   sgMail.send({
-    to: user.email,
+    to: "singhvishal10071997@gmail.com",
     from: process.env.EMAIL_USER,
     subject: "Your Access Has Been Blocked",
     html: `

@@ -228,31 +228,16 @@ app.get("/block/:deviceId", async (req, res) => {
 
 /* ================= DELETE ================= */
 
-app.get("/block/:deviceId", async (req, res) => {
+app.get("/delete/:deviceId", async (req, res) => {
 
   if (!req.session.admin)
     return res.redirect("/admin-login");
 
-  const user = await User.findOne({ deviceId: req.params.deviceId });
-
-  if (!user) return res.send("User not found");
-
-  user.status = "BLOCKED";
-  await user.save();
-
-  sgMail.send({
-    to: user.email,
-    from: process.env.EMAIL_USER,
-    subject: "Your Access Has Been Blocked",
-    html: `
-      <h3>Access Blocked</h3>
-      <p>Your access to the Attendance Application has been blocked.</p>
-      <p>Please contact the administrator.</p>
-    `
-  }).catch(err => console.error("SendGrid error:", err));
+  await User.deleteOne({ deviceId: req.params.deviceId });
 
   res.redirect("/admin");
 });
+
 
 /* ================= HEARTBEAT ================= */
 
@@ -280,4 +265,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
-

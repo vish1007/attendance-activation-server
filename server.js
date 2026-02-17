@@ -1,5 +1,12 @@
-const session = require("express-session");
+
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 const nodemailer = require("nodemailer");
+const session = require("express-session");
+const app = express();
+app.use(express.json());
+app.use(cors());
 
 app.use(session({
   secret: "attendance-secret",
@@ -7,13 +14,10 @@ app.use(session({
   saveUninitialized: false
 }));
 
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
 
-const app = express();
-app.use(express.json());
-app.use(cors());
+
+
+
 
 /* ================= MONGODB CONNECT ================= */
 

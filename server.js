@@ -55,7 +55,7 @@ app.post("/register", async (req, res) => {
 
       // Send email to ADMIN (background, non-blocking)
      sgMail.send({
-  to: "singhvishal10071997@gmail.com",
+  to: process.env.EMAIL_USER,
   from: process.env.EMAIL_USER,
   subject: "New Activation Request",
   html: `

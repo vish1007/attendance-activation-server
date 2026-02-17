@@ -200,6 +200,8 @@ app.get("/approve/:deviceId", async (req, res) => {
 
 /* ================= BLOCK ================= */
 
+/* ================= BLOCK ================= */
+
 app.get("/block/:deviceId", async (req, res) => {
 
   if (!req.session.admin)
@@ -211,17 +213,7 @@ app.get("/block/:deviceId", async (req, res) => {
 
   user.status = "BLOCKED";
   await user.save();
-app.get("/delete/:deviceId", async (req, res) => {
 
-  if (!req.session.admin)
-    return res.redirect("/admin-login");
-
-  await User.deleteOne({ deviceId: req.params.deviceId });
-
-  res.redirect("/admin");
-});
-
-  // Send block email to USER (background)
   transporter.sendMail({
     from: process.env.EMAIL_USER,
     to: user.email,
@@ -235,6 +227,19 @@ app.get("/delete/:deviceId", async (req, res) => {
 
   res.redirect("/admin");
 });
+
+/* ================= DELETE ================= */
+
+app.get("/delete/:deviceId", async (req, res) => {
+
+  if (!req.session.admin)
+    return res.redirect("/admin-login");
+
+  await User.deleteOne({ deviceId: req.params.deviceId });
+
+  res.redirect("/admin");
+});
+
 
 /* ================= HEARTBEAT ================= */
 

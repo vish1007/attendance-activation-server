@@ -55,7 +55,7 @@ app.post("/register", async (req, res) => {
 
       // Send email to ADMIN (background, non-blocking)
      sgMail.send({
-  to: process.env.EMAIL_USER,
+  to: "singhvishal10071997@gmail.com",
   from: process.env.EMAIL_USER,
   subject: "New Activation Request",
   html: `
@@ -212,7 +212,7 @@ app.get("/block/:deviceId", async (req, res) => {
   await user.save();
 
   sgMail.send({
-    to: "singhvishal10071997@gmail.com",
+    to: user.email,
     from: process.env.EMAIL_USER,
     subject: "Your Access Has Been Blocked",
     html: `

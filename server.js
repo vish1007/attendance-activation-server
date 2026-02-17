@@ -180,20 +180,20 @@ app.get("/approve/:deviceId", async (req, res) => {
   user.status = "APPROVED";
   await user.save();
 
-  // Send approval email to USER (background)
-  transporter.sendMail({
-    from: process.env.EMAIL_USER,
+  sgMail.send({
     to: user.email,
+    from: process.env.EMAIL_USER,
     subject: "Your Activation is Approved",
     html: `
       <h3>Activation Approved</h3>
       <p>Your device has been successfully approved.</p>
       <p>You can now use the Attendance Application.</p>
     `
-  }).catch(err => console.error("Approval email failed:", err));
+  }).catch(err => console.error("SendGrid error:", err));
 
   res.redirect("/admin");
 });
+
 
 /* ================= BLOCK ================= */
 
@@ -211,32 +211,48 @@ app.get("/block/:deviceId", async (req, res) => {
   user.status = "BLOCKED";
   await user.save();
 
-  transporter.sendMail({
-    from: process.env.EMAIL_USER,
+  sgMail.send({
     to: user.email,
+    from: process.env.EMAIL_USER,
     subject: "Your Access Has Been Blocked",
     html: `
       <h3>Access Blocked</h3>
       <p>Your access to the Attendance Application has been blocked.</p>
       <p>Please contact the administrator.</p>
     `
-  }).catch(err => console.error("Block email failed:", err));
+  }).catch(err => console.error("SendGrid error:", err));
 
   res.redirect("/admin");
 });
 
+
 /* ================= DELETE ================= */
 
-app.get("/delete/:deviceId", async (req, res) => {
+app.get("/block/:deviceId", async (req, res) => {
 
   if (!req.session.admin)
     return res.redirect("/admin-login");
 
-  await User.deleteOne({ deviceId: req.params.deviceId });
+  const user = await User.findOne({ deviceId: req.params.deviceId });
+
+  if (!user) return res.send("User not found");
+
+  user.status = "BLOCKED";
+  await user.save();
+
+  sgMail.send({
+    to: user.email,
+    from: process.env.EMAIL_USER,
+    subject: "Your Access Has Been Blocked",
+    html: `
+      <h3>Access Blocked</h3>
+      <p>Your access to the Attendance Application has been blocked.</p>
+      <p>Please contact the administrator.</p>
+    `
+  }).catch(err => console.error("SendGrid error:", err));
 
   res.redirect("/admin");
 });
-
 
 /* ================= HEARTBEAT ================= */
 
@@ -259,6 +275,9 @@ app.post("/heartbeat", async (req, res) => {
 
 /* ================= START SERVER ================= */
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
 });
+

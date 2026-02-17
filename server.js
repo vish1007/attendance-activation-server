@@ -1,8 +1,11 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const nodemailer = require("nodemailer");
 const session = require("express-session");
+const sgMail = require("@sendgrid/mail");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+
 
 const app = express();
 
@@ -59,19 +62,21 @@ app.post("/register", async (req, res) => {
       user = await User.create({ email, deviceId });
 
       // Send email to ADMIN (background, non-blocking)
-      transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER,
-        subject: "New Activation Request",
-        html: `
-          <h3>New Activation Request</h3>
-          <p><b>Email:</b> ${email}</p>
-          <p><b>Device:</b> ${deviceId}</p>
-          <a href="https://attendance-activation-server.onrender.com/approve/${deviceId}">
-            Approve This Device
-          </a>
-        `
-      }).catch(err => console.error("Register email failed:", err));
+     sgMail.send({
+  to: process.env.EMAIL_USER,
+  from: process.env.EMAIL_USER,
+  subject: "New Activation Request",
+  html: `
+    <h3>New Activation Request</h3>
+    <p><b>Email:</b> ${email}</p>
+    <p><b>Device:</b> ${deviceId}</p>
+    <a href="https://attendance-activation-server.onrender.com/approve/${deviceId}">
+      Approve This Device
+    </a>
+  `
+}).catch(err => console.error("SendGrid error:", err));
+
+
     }
 
     res.json({ status: user.status });

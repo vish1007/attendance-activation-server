@@ -150,7 +150,9 @@ app.get("/admin", async (req, res) => {
         <b>Status:</b> ${u.status}<br/>
         <b>Last Active:</b> ${u.lastActive || "Never"}<br/>
         <a href="/approve/${u.deviceId}">Approve</a> |
-        <a href="/block/${u.deviceId}">Block</a>
+        <a href="/block/${u.deviceId}">Block</a> |
+        <a href="/delete/${u.deviceId}">Delete</a>
+
         <hr/>
       </div>
     `;
@@ -209,6 +211,15 @@ app.get("/block/:deviceId", async (req, res) => {
 
   user.status = "BLOCKED";
   await user.save();
+app.get("/delete/:deviceId", async (req, res) => {
+
+  if (!req.session.admin)
+    return res.redirect("/admin-login");
+
+  await User.deleteOne({ deviceId: req.params.deviceId });
+
+  res.redirect("/admin");
+});
 
   // Send block email to USER (background)
   transporter.sendMail({

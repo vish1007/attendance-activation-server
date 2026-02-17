@@ -24,6 +24,18 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.error("Mongo Error:", err));
 
+/* ================= EMAIL TRANSPORTER (Single Instance) ================= */
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
 /* ================= USER MODEL ================= */
 
 const userSchema = new mongoose.Schema({
@@ -46,37 +58,20 @@ app.post("/register", async (req, res) => {
     if (!user) {
       user = await User.create({ email, deviceId });
 
-      // Send Email Notification
-      try {
-        const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for 587
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
-
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: process.env.EMAIL_USER,
-          subject: "New Activation Request",
-          html: `
-            <h3>New Activation Request</h3>
-            <p><b>Email:</b> ${email}</p>
-            <p><b>Device:</b> ${deviceId}</p>
-            <a href="https://attendance-activation-server.onrender.com/approve/${deviceId}">
-              Approve This Device
-            </a>
-          `
-        });
-
-        console.log("Activation email sent");
-      } catch (mailError) {
-        console.error("Email error:", mailError);
-      }
+      // Send email to ADMIN (background, non-blocking)
+      transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: process.env.EMAIL_USER,
+        subject: "New Activation Request",
+        html: `
+          <h3>New Activation Request</h3>
+          <p><b>Email:</b> ${email}</p>
+          <p><b>Device:</b> ${deviceId}</p>
+          <a href="https://attendance-activation-server.onrender.com/approve/${deviceId}">
+            Approve This Device
+          </a>
+        `
+      }).catch(err => console.error("Register email failed:", err));
     }
 
     res.json({ status: user.status });
@@ -122,8 +117,8 @@ app.post("/admin-login", (req, res) => {
   const { username, password } = req.body;
 
   if (
-    username === process.env.ADMIN_USER &&
-    password === process.env.ADMIN_PASS
+    username.trim() === process.env.ADMIN_USER.trim() &&
+    password.trim() === process.env.ADMIN_PASS.trim()
   ) {
     req.session.admin = true;
     return res.redirect("/admin");
@@ -186,35 +181,20 @@ app.get("/approve/:deviceId", async (req, res) => {
   user.status = "APPROVED";
   await user.save();
 
-  // Send approval email
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: "Your Activation is Approved",
-      html: `
-        <h3>Activation Approved</h3>
-        <p>Hello,</p>
-        <p>Your device has been successfully approved.</p>
-        <p>You can now use the Attendance Application.</p>
-      `
-    });
-
-  } catch (err) {
-    console.error("Approval email failed:", err);
-  }
+  // Send approval email to USER (background)
+  transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: "Your Activation is Approved",
+    html: `
+      <h3>Activation Approved</h3>
+      <p>Your device has been successfully approved.</p>
+      <p>You can now use the Attendance Application.</p>
+    `
+  }).catch(err => console.error("Approval email failed:", err));
 
   res.redirect("/admin");
 });
-
 
 /* ================= BLOCK ================= */
 
@@ -230,35 +210,20 @@ app.get("/block/:deviceId", async (req, res) => {
   user.status = "BLOCKED";
   await user.save();
 
-  // Send block email
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: "Your Access Has Been Blocked",
-      html: `
-        <h3>Access Blocked</h3>
-        <p>Hello,</p>
-        <p>Your access to the Attendance Application has been blocked.</p>
-        <p>Please contact the administrator for support.</p>
-      `
-    });
-
-  } catch (err) {
-    console.error("Block email failed:", err);
-  }
+  // Send block email to USER (background)
+  transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: "Your Access Has Been Blocked",
+    html: `
+      <h3>Access Blocked</h3>
+      <p>Your access to the Attendance Application has been blocked.</p>
+      <p>Please contact the administrator.</p>
+    `
+  }).catch(err => console.error("Block email failed:", err));
 
   res.redirect("/admin");
 });
-
 
 /* ================= HEARTBEAT ================= */
 

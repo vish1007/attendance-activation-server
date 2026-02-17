@@ -118,11 +118,6 @@ app.get("/admin-login", (req, res) => {
 app.post("/admin-login", (req, res) => {
   const { username, password } = req.body;
 
-  console.log("ENV USER:", process.env.ADMIN_USER);
-  console.log("ENV PASS:", process.env.ADMIN_PASS);
-  console.log("INPUT USER:", username);
-  console.log("INPUT PASS:", password);
-
   if (
     username === process.env.ADMIN_USER &&
     password === process.env.ADMIN_PASS
@@ -133,7 +128,6 @@ app.post("/admin-login", (req, res) => {
 
   res.send("Invalid credentials");
 });
-
 
 /* ================= ADMIN DASHBOARD ================= */
 
